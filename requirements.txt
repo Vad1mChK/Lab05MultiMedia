@@ -1,0 +1,7 @@
+pillow
+python-ffmpeg
+soundfile
+numpy
+matplotlib
+scipy
+kivy

@@ -1,0 +1,58 @@
+ScreenManager:
+    MainScreen:
+    ImageAnalyzerScreen:
+    VideoConcatenatorScreen:
+    AudioVisualizerScreen:
+
+<MainScreen>:
+    name: "main"
+    BoxLayout:
+        orientation: "vertical"
+        Label:
+            text: "Welcome to the App!"
+            font_size: 24
+        Button:
+            text: "Image Analyzer"
+            on_press: app.root.current = "image"
+        Button:
+            text: "Video Concatenator"
+            on_press: app.root.current = "video"
+        Button:
+            text: "Audio Visualizer"
+            on_press: app.root.current = "audio"
+
+<ImageAnalyzerScreen>:
+    name: "image"
+    BoxLayout:
+        orientation: "vertical"
+        Label:
+            text: "Select an image to analyze"
+        FileChooserIconView:
+            id: filechooser_image
+        Button:
+            text: "Analyze Image"
+            on_press: app.root.current = "main"
+
+<VideoConcatenatorScreen>:
+    name: "video"
+    BoxLayout:
+        orientation: "vertical"
+        Label:
+            text: "Select videos to concatenate"
+        FileChooserIconView:
+            id: filechooser_video
+        Button:
+            text: "Concatenate Videos"
+            on_press: app.root.current = "main"
+
+<AudioVisualizerScreen>:
+    name: "audio"
+    BoxLayout:
+        orientation: "vertical"
+        Label:
+            text: "Select an audio file to visualize"
+        FileChooserIconView:
+            id: filechooser_audio
+        Button:
+            text: "Visualize Audio"
+            on_press: app.root.current = "main"
