@@ -7,8 +7,8 @@ class MultimediaApp(App):
     def build(self):
         sm = ScreenManager()
         sm.add_widget(MainScreen(name="main"))
-        sm.add_widget(ImageAnalyzerScreen(name="image"))
-        sm.add_widget(VideoConcatenatorScreen(name="video"))
+        sm.add_widget(ImageAnalyzerScreen(name="analyze_image"))
+        sm.add_widget(VideoConcatenatorScreen(name="download_video"))
         sm.add_widget(AudioVisualizerScreen(name="audio"))
         return sm
 
