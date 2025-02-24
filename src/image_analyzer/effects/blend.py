@@ -3,6 +3,8 @@ import numpy as np
 from PIL.Image import Image
 import PIL.Image as ImageModule
 
+from src.image_analyzer.image_effects import DoubleImageEffect, ImageEffectType
+
 
 class BlendMode(Enum):
     NORMAL = 'Normal'
@@ -109,6 +111,15 @@ def blend(left: Image, right: Image, mode: BlendMode = BlendMode.NORMAL) -> Imag
     )
 
     return result
+
+
+class BlendImagesEffect(DoubleImageEffect):
+    def __init__(self, blend_mode: BlendMode):
+        super().__init__(effect_type=ImageEffectType.BLEND)
+        self.blend_mode = blend_mode
+
+    def apply(self, left: Image, right: Image) -> Image:
+        return blend(left, right, blend_mode)
 
 
 if __name__ == '__main__':
