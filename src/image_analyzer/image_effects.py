@@ -4,8 +4,6 @@ from typing import Literal
 
 from PIL.Image import Image
 
-from src.image_analyzer.transform import transform_image
-
 
 class ImageEffectType(Enum):
     TRANSFORM = 0  # Rotate 0/90/180/270 or mirror
@@ -24,23 +22,6 @@ class SingleImageEffect(ImageEffect, ABC):
     @abstractmethod
     def apply(self, image: Image) -> Image:
         pass
-
-
-class TransformImageEffect(SingleImageEffect):
-    def __init__(self,
-                 rotation: Literal[0, 90, 180, 270] = 0,
-                 flip_horizontal: bool = False,
-                 flip_vertical: bool = False,):
-        super().__init__(effect_type=ImageEffectType.TRANSFORM)
-        self._rotation = rotation
-        self._flip_horizontal = flip_horizontal
-        self._flip_vertical = flip_vertical
-
-    def apply(self, image: Image) -> Image:
-        return transform_image(image, self._rotation, self._flip_horizontal, self._flip_vertical)
-
-    def __repr__(self):
-        return f'TransformImageEffect(rotation={self._rotation}, flip_horizontal={self._flip_horizontal}, flip_vertical={self._flip_vertical})'
 
 
 class DoubleImageEffect(ImageEffect, ABC):

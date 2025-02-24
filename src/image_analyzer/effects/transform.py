@@ -1,5 +1,8 @@
 from typing import Literal
+import PIL.Image as ImageModule
 from PIL.Image import Image, Transpose
+
+from src.image_analyzer.image_effects import SingleImageEffect, ImageEffectType
 
 
 def transform_image(
@@ -45,8 +48,26 @@ def transform_image(
 
     return image
 
-# Example usage:
+
+class TransformImageEffect(SingleImageEffect):
+    def __init__(self,
+                 rotation: Literal[0, 90, 180, 270] = 0,
+                 flip_horizontal: bool = False,
+                 flip_vertical: bool = False,):
+        super().__init__(effect_type=ImageEffectType.TRANSFORM)
+        self._rotation = rotation
+        self._flip_horizontal = flip_horizontal
+        self._flip_vertical = flip_vertical
+
+    def apply(self, image: Image) -> Image:
+        return transform_image(image, self._rotation, self._flip_horizontal, self._flip_vertical)
+
+    def __repr__(self):
+        return f'TransformImageEffect(rotation={self._rotation}, flip_horizontal={self._flip_horizontal}, flip_vertical={self._flip_vertical})'
+
+
 if __name__ == "__main__":
-    img = Image.open("example.jpg")
+    img = ImageModule.open("../../../examples/china.jpg")
     transformed_img = transform_image(img, rotation=90)
     transformed_img.show()
+    transformed_img.save("../../../transformed_china.jpg")
