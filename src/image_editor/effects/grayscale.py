@@ -3,7 +3,7 @@ import numpy as np
 import PIL.Image as ImageModule
 from PIL.Image import Image
 
-from src.image_analyzer.image_effects import ImageEffectError, SingleImageEffect, ImageEffectType
+from src.image_editor.image_effects import ImageEffectError, SingleImageEffect, ImageEffectType
 
 
 class GrayscaleAlgorithm(Enum):

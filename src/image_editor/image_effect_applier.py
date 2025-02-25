@@ -4,14 +4,14 @@ from PIL import Image
 
 # These imports assume that you have the following classes in your module:
 # - ImageEffect, SingleImageEffect, DoubleImageEffect, and ImageEffectError
-from src.image_analyzer.image_effects import (
+from src.image_editor.image_effects import (
     ImageEffect,
     SingleImageEffect,
     DoubleImageEffect,
     ImageEffectError
 )
 
-class ImageEditor(ABC):
+class ImageEffectApplier(ABC):
     def __init__(self):
         self.effects: List[ImageEffect] = []
 
@@ -28,7 +28,7 @@ class ImageEditor(ABC):
         pass
 
 # SingleImageEditor that works only with SingleImageEffect.
-class SingleImageEditor(ImageEditor):
+class SingleImageEffectApplier(ImageEffectApplier):
     def __init__(self, original: Image):
         super().__init__()
         self.original_image = original
@@ -54,7 +54,7 @@ class SingleImageEditor(ImageEditor):
         return img
 
 # DoubleImageEditor that works only with DoubleImageEffect.
-class DoubleImageEditor(ImageEditor):
+class DoubleImageEffectApplier(ImageEffectApplier):
     def __init__(self, left: Image, right: Image):
         super().__init__()
         self.left_image = left

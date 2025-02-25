@@ -3,7 +3,7 @@ import numpy as np
 from PIL.Image import Image
 import PIL.Image as ImageModule
 
-from src.image_analyzer.image_effects import DoubleImageEffect, ImageEffectType
+from src.image_editor.image_effects import DoubleImageEffect, ImageEffectType
 
 
 class BlendMode(Enum):

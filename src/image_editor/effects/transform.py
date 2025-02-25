@@ -2,7 +2,7 @@ from typing import Literal
 import PIL.Image as ImageModule
 from PIL.Image import Image, Transpose
 
-from src.image_analyzer.image_effects import SingleImageEffect, ImageEffectType
+from src.image_editor.image_effects import SingleImageEffect, ImageEffectType
 
 
 def transform_image(

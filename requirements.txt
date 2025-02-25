@@ -1,8 +1,8 @@
-pillow
-python-ffmpeg
-soundfile
 numpy
-matplotlib
 scipy
-kivy
-opencv-python
+matplotlib
+pillow
+opencv-python  # Computer vision, Video player?
+pyside6 # GUI
+qdarkstyle # GUI dark style
+pytubefix  # YouTube downloads

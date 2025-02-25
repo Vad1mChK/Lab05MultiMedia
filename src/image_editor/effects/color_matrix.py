@@ -2,7 +2,7 @@ import numpy as np
 from PIL import Image
 from typing import Dict, List, Callable
 
-from src.image_analyzer.image_effects import SingleImageEffect, ImageEffectType, ImageEffectError
+from src.image_editor.image_effects import SingleImageEffect, ImageEffectType, ImageEffectError
 
 
 class ColorMatrixEffect(SingleImageEffect):
