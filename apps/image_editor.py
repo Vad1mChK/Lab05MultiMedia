@@ -47,19 +47,13 @@ class ImageEditor(QMainWindow):
             'blend_right': None,
             'blend_result': None,
         }
-        self.blend_mode = BlendMode.NORMAL
 
         self.single_image_effect_applier = SingleImageEffectApplier(original=None)
         self.double_image_effect_applier = DoubleImageEffectApplier(left=None, right=None)
 
-        self.originalImage_loadButton = self.findChild(QPushButton, 'originalImage_loadButton')
-        self.originalImage_analyzeButton = self.findChild(QPushButton, 'originalImage_analyzeButton')
-        self.resultImage_saveButton = self.findChild(QPushButton, 'resultImage_saveButton')
-        self.resultImage_analyzeButton = self.findChild(QPushButton, 'resultImage_analyzeButton')
-        self.blendLeftImage_loadButton = self.findChild(QPushButton, 'blendLeftImage_loadButton')
-        self.blendRightImage_loadButton = self.findChild(QPushButton, 'blendRightImage_loadButton')
+        self.blend_mode = BlendMode.NORMAL
         self.blend_blendMode_select = self.findChild(QComboBox, 'blend_blendMode_select')
-        self.blendResultImage_saveButton = self.findChild(QPushButton, 'blendResultImage_saveButton')
+        self.blend_blendMode_select.addItems(map(lambda i: i.name, BlendMode))
 
         self.image_elements: Dict[
             Literal['original', 'result', 'blend_left', 'blend_right', 'blend_result'], QLabel
