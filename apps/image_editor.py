@@ -1,20 +1,23 @@
 import os
 import sys
-from typing import Dict
+from typing import Dict, Literal
 
 import qdarkstyle
-from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog
+from PIL.Image import Image
+from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QPushButton, QLabel, QComboBox
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, Qt
 from PySide6.QtGui import QPixmap
 from PIL import Image as ImageModule
 
+from src.image_editor.effects.blend import BlendMode
 # Import your image effects and effect appliers.
 from src.image_editor.effects.color_matrix import ColorMatrixEffect, presets as color_matrix_presets
 from src.image_editor.effects.grayscale import GrayscaleImageEffect
 from src.image_editor.effects.transform import TransformImageEffect
+from src.image_editor.image_analyzer import display_color_distribution
 from src.image_editor.image_effect_applier import SingleImageEffectApplier, DoubleImageEffectApplier
-from src.image_editor.image_effects import ImageEffectType, SingleImageEffect
+from src.image_editor.image_effects import ImageEffectType, SingleImageEffect, ImageEffect
 from src.util.io_utils import save_temp_image
 
 
@@ -29,19 +32,76 @@ class ImageEditor(QMainWindow):
         if not ui_file.open(QFile.ReadOnly):
             print("Unable to open image_editor.ui")
             sys.exit(-1)
-        self.ui = loader.load(ui_file, self)
+        loaded_window = self.ui = loader.load(ui_file)
         ui_file.close()
 
-        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        self.setCentralWidget(loaded_window.centralWidget())
+        self.setWindowTitle(loaded_window.windowTitle())
+        self.setFixedWidth(loaded_window.width())
+        self.setFixedHeight(loaded_window.height())
+
+        self.images: Dict[Literal['original', 'result', 'blend_left', 'blend_right', 'blend_result'], Image | None] = {
+            'original': None,
+            'result': None,
+            'blend_left': None,
+            'blend_right': None,
+            'blend_result': None,
+        }
+        self.blend_mode = BlendMode.NORMAL
 
         self.single_image_effect_applier = SingleImageEffectApplier(original=None)
         self.double_image_effect_applier = DoubleImageEffectApplier(left=None, right=None)
 
-        # Connect the load button.
-        self.ui.originalImage_loadButton.clicked.connect(self.on_load_original_image)
-        self.ui.resultImage_saveButton.clicked.connect(self.on_save_single_result_image)
+        self.originalImage_loadButton = self.findChild(QPushButton, 'originalImage_loadButton')
+        self.originalImage_analyzeButton = self.findChild(QPushButton, 'originalImage_analyzeButton')
+        self.resultImage_saveButton = self.findChild(QPushButton, 'resultImage_saveButton')
+        self.resultImage_analyzeButton = self.findChild(QPushButton, 'resultImage_analyzeButton')
+        self.blendLeftImage_loadButton = self.findChild(QPushButton, 'blendLeftImage_loadButton')
+        self.blendRightImage_loadButton = self.findChild(QPushButton, 'blendRightImage_loadButton')
+        self.blend_blendMode_select = self.findChild(QComboBox, 'blend_blendMode_select')
+        self.blendResultImage_saveButton = self.findChild(QPushButton, 'blendResultImage_saveButton')
 
-    def on_load_original_image(self):
+        self.image_elements: Dict[
+            Literal['original', 'result', 'blend_left', 'blend_right', 'blend_result'], QLabel
+        ] = {
+            'original': self.findChild(QLabel, 'originalImage_image'),
+            'result': self.findChild(QLabel, 'resultImage_image'),
+            'blend_left': self.findChild(QLabel, 'blendLeftImage_image'),
+            'blend_right': self.findChild(QLabel, 'blendRightImage_image'),
+            'blend_result': self.findChild(QLabel, 'blendResultImage_image'),
+        }
+        self.load_buttons: Dict[
+            Literal['original', 'blend_left', 'blend_right'], QPushButton
+        ] = {
+            'original': self.findChild(QPushButton, 'originalImage_loadButton'),
+            'blend_left': self.findChild(QPushButton, 'blendLeftImage_loadButton'),
+            'blend_right': self.findChild(QPushButton, 'blendRightImage_loadButton'),
+        }
+        self.save_buttons: Dict[
+            Literal['result', 'blend_result'], QPushButton
+        ] = {
+            'result': self.findChild(QPushButton, 'resultImage_saveButton'),
+            'blend_result': self.findChild(QPushButton, 'blendResultImage_saveButton'),
+        }
+        self.analyze_buttons: Dict[
+            Literal['original', 'result', 'blend_left', 'blend_right', 'blend_result'], QPushButton
+        ] = {
+            'original': self.findChild(QPushButton, 'originalImage_analyzeButton'),
+            'result': self.findChild(QPushButton, 'resultImage_analyzeButton'),
+            'blend_left': self.findChild(QPushButton, 'blendLeftImage_analyzeButton'),
+            'blend_right': self.findChild(QPushButton, 'blendRightImage_analyzeButton'),
+            'blend_result': self.findChild(QPushButton, 'blendResultImage_analyzeButton'),
+        }
+
+        for key in ['original', 'blend_left', 'blend_right']:
+            self.load_buttons[key].clicked.connect(lambda: self.on_load_image(key))
+        for key in ['result', 'blend_result']:
+            self.analyze_buttons[key].clicked.connect(lambda: self.on_analyze_image(key))
+
+    def on_load_image(self,
+                      key: Literal['original', 'result', 'blend_left', 'blend_right', 'blend_result'],
+                      ):
+        print(f'Trying to load image for key {key}')
         # Open a file dialog to choose an image.
         file_path, _ = QFileDialog.getOpenFileName(
             self,
@@ -49,26 +109,48 @@ class ImageEditor(QMainWindow):
             os.path.expanduser("~"),
             "Image Files (*.png *.jpg *.jpeg *.bmp *.webp)"
         )
-        self.ui.originalImage_analyzeButton.setEnabled(file_path is not None)
         if file_path:
+            if self.analyze_buttons[key] is not None:
+                self.analyze_buttons[key].setEnabled(file_path is not None)
+
             print("Selected file:", file_path)
-            self.single_image_effect_applier = SingleImageEffectApplier(original=ImageModule.open(file_path))
-            # Assuming your .ui has a QLabel with objectName 'originalImage_display'
+
+            original_image = ImageModule.open(file_path)
+            self.images[key] = original_image
+            print(self.images)
+
+            match key:
+                case 'original':
+                    self.single_image_effect_applier.original_image = original_image
+                case 'blend_left':
+                    self.double_image_effect_applier.blend_left = original_image
+                case 'blend_right':
+                    self.double_image_effect_applier.blend_right = original_image
+                case _:
+                    pass
+
             pixmap = QPixmap(file_path)
             # Optionally scale the pixmap to fit the display area:
-            pixmap = pixmap.scaled(self.ui.originalImage_image.size(), aspectMode=Qt.AspectRatioMode.KeepAspectRatio)
-            self.ui.originalImage_image.setPixmap(pixmap)
-            # You might also want to update your effect applier with the loaded image.
-            # For example:
-            # from PIL import Image as PILImage
+            pixmap = pixmap.scaled(self.image_elements[key].size(), aspectMode=Qt.AspectRatioMode.KeepAspectRatio)
+            self.image_elements[key].setPixmap(pixmap)
 
-            self.update_single_result_image()
+            match key:
+                case 'original':
+                    self.update_result_image(key='result')
+                case 'blend_left' | 'blend_right':
+                    if self.images['blend_left'] is not None and self.images['blend_right'] is not None:
+                        self.update_result_image(key='blend_result')
 
-    def on_analyze_original_image(self):
-        pass
+    def on_analyze_image(self, image: Image | None = None):
+        if image is None:
+            print("Image is not loaded properly.")
+            return
+
+        display_color_distribution(image)
+
 
     def on_save_single_result_image(self):
-        if self.result_image is None:
+        if self.images['result'] is None:
             print("No image to save")
             return
 
@@ -83,9 +165,11 @@ class ImageEditor(QMainWindow):
             print("Path to save image was not specified")
             return
 
-        self.result_image.save(file_path)
+        self.images['result'].save(file_path)
 
-    def update_single_result_image(self):
+    def update_result_image(self,
+                            key: Literal['result', 'blend_result']
+                            ):
         # Update self.ui.resultImage_image. Perhaps save it to temporary image?
         # SingleImageEffectApplier#apply_all_effects() returns a pil image.
         result_image = self.single_image_effect_applier.apply_all_effects()
@@ -93,23 +177,23 @@ class ImageEditor(QMainWindow):
 
         try:
             pixmap = QPixmap(result_temp_path)
-            pixmap = pixmap.scaled(self.ui.resultImage_image.size(), aspectMode=Qt.AspectRatioMode.KeepAspectRatio)
-            self.ui.resultImage_image.setPixmap(pixmap)
+            pixmap = pixmap.scaled(self.resultImage_image.size(), aspectMode=Qt.AspectRatioMode.KeepAspectRatio)
+            self.resultImage_image.setPixmap(pixmap)
 
             # If you do NOT need to keep the file around, delete it
             os.remove(result_temp_path)
 
         except Exception as e:
             print("Couldn't set result image.", e)
-            self.result_image = None
-            self.ui.resultImage_analyzeButton.setEnabled(False)
-            self.ui.resultImage_saveButton.setEnabled(False)
+            self.images[key] = result_image
+            self.resultImage_analyzeButton.setEnabled(False)
+            self.resultImage_saveButton.setEnabled(False)
 
         else:
             print("Set result image.")
-            self.result_image = result_image
-            self.ui.resultImage_analyzeButton.setEnabled(True)
-            self.ui.resultImage_saveButton.setEnabled(True)
+            self.images[key] = result_image
+            self.resultImage_analyzeButton.setEnabled(True)
+            self.resultImage_saveButton.setEnabled(True)
 
 
 if __name__ == '__main__':
@@ -125,5 +209,5 @@ if __name__ == '__main__':
     # Apply a dark theme in a couple of lines.
     app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyside6'))
     image_editor = ImageEditor()
-    image_editor.ui.show()  # Show the loaded UI
+    image_editor.show()  # Show the loaded UI
     sys.exit(app.exec())

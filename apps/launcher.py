@@ -1,31 +1,50 @@
 import os
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow
-from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QFile, Qt
 import subprocess
+
 import qdarkstyle
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton
+from PySide6.QtUiTools import QUiLoader
+from PySide6.QtCore import QFile
 
 class Launcher(QMainWindow):
     def __init__(self):
         super().__init__()
-        # Load the UI file designed in QtDesigner.
+
+        # Use QUiLoader to load the UI file.
         loader = QUiLoader()
         ui_file = QFile("launcher.ui")
         if not ui_file.open(QFile.ReadOnly):
             print("Unable to open launcher.ui")
             sys.exit(-1)
-        self.ui = loader.load(ui_file, self)
+        # Load the UI; since the top-level widget in launcher.ui is a QMainWindow,
+        # loader.load() returns a QMainWindow instance.
+        loaded_window = loader.load(ui_file)
         ui_file.close()
 
-        # Access UI elements by their object names.
-        self.ui.btnImageEditor.clicked.connect(self.launch_image_editor)
-        self.ui.btnVideoDownloader.clicked.connect(self.launch_video_downloader)
-        self.ui.btnVideoPlayer.clicked.connect(self.launch_video_player)
+        # Set up our main window by adopting the loaded UI's central widget.
+        # This way, our Launcher instance becomes the main window.
+        self.setCentralWidget(loaded_window.centralWidget())
+        self.setWindowTitle(loaded_window.windowTitle())
+        self.setFixedWidth(loaded_window.width())
+        self.setFixedHeight(loaded_window.height())
+
+        # Now find the buttons by their object names (as set in QtDesigner).
+        self.btnImageEditor = self.findChild(QPushButton, "btnImageEditor")
+        self.btnVideoDownloader = self.findChild(QPushButton, "btnVideoDownloader")
+        self.btnVideoPlayer = self.findChild(QPushButton, "btnVideoPlayer")
+
+        # Connect signals to slots.
+        if self.btnImageEditor:
+            self.btnImageEditor.clicked.connect(self.launch_image_editor)
+        if self.btnVideoDownloader:
+            self.btnVideoDownloader.clicked.connect(self.launch_video_downloader)
+        if self.btnVideoPlayer:
+            self.btnVideoPlayer.clicked.connect(self.launch_video_player)
 
     def launch_image_editor(self):
         # Launch the image editor as a separate process.
-        process = subprocess.Popen([sys.executable, "image_editor.py"])
+        subprocess.Popen([sys.executable, "image_editor.py"])
 
     def launch_video_downloader(self):
         # Launch the video downloader as a separate process.
@@ -35,12 +54,11 @@ class Launcher(QMainWindow):
         # Launch the video player as a separate process.
         subprocess.Popen([sys.executable, "video_player.py"])
 
-
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    # Apply a dark theme in a couple of lines.
+    # Apply a dark theme quickly with qdarkstyle.
     app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyside6'))
 
     launcher = Launcher()
-    launcher.ui.show()  # Show the loaded UI
+    launcher.show()  # Show our main launcher window.
     sys.exit(app.exec())

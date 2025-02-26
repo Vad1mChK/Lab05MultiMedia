@@ -1,5 +1,4 @@
 numpy
-scipy
 matplotlib
 pillow
 opencv-python  # Computer vision, Video player?

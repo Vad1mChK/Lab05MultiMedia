@@ -10,8 +10,7 @@ if __name__ == '__main__':
     # Launch the launcher.py script
     try:
         process = subprocess.Popen([sys.executable, launcher_path],
-                                   cwd=os.path.join(script_dir, "apps"),
-                                   creationflags=subprocess.CREATE_NO_WINDOW
+                                   cwd=os.path.join(script_dir, "apps")
                                    )
         process.wait()
     except Exception as e:
