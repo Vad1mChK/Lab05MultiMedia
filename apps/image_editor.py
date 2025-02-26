@@ -94,9 +94,11 @@ class ImageEditor(QMainWindow):
         }
 
         for key in ['original', 'blend_left', 'blend_right']:
-            self.load_buttons[key].clicked.connect(lambda: self.on_load_image(key))
+            self.load_buttons[key].clicked.connect(lambda checked, _key=key: self.on_load_image(_key))
+            self.analyze_buttons[key].clicked.connect(lambda checked, _key=key: self.on_analyze_image(_key))
         for key in ['result', 'blend_result']:
-            self.analyze_buttons[key].clicked.connect(lambda: self.on_analyze_image(key))
+            self.save_buttons[key].clicked.connect(lambda checked, _key=key: self.on_save_result_image(_key))
+            self.analyze_buttons[key].clicked.connect(lambda checked, _key=key: self.on_analyze_image(_key))
 
     def on_load_image(self,
                       key: Literal['original', 'result', 'blend_left', 'blend_right', 'blend_result'],
@@ -123,9 +125,9 @@ class ImageEditor(QMainWindow):
                 case 'original':
                     self.single_image_effect_applier.original_image = original_image
                 case 'blend_left':
-                    self.double_image_effect_applier.blend_left = original_image
+                    self.double_image_effect_applier.left_image = original_image
                 case 'blend_right':
-                    self.double_image_effect_applier.blend_right = original_image
+                    self.double_image_effect_applier.right_image = original_image
                 case _:
                     pass
 
@@ -141,16 +143,16 @@ class ImageEditor(QMainWindow):
                     if self.images['blend_left'] is not None and self.images['blend_right'] is not None:
                         self.update_result_image(key='blend_result')
 
-    def on_analyze_image(self, image: Image | None = None):
+    def on_analyze_image(self, key: Literal['original', 'result', 'blend_left', 'blend_right', 'blend_result']):
+        image = self.images[key]
         if image is None:
             print("Image is not loaded properly.")
             return
-
         display_color_distribution(image)
 
 
-    def on_save_single_result_image(self):
-        if self.images['result'] is None:
+    def on_save_result_image(self, key: Literal['result', 'blend_result']):
+        if self.images[key] is None:
             print("No image to save")
             return
 
@@ -165,20 +167,21 @@ class ImageEditor(QMainWindow):
             print("Path to save image was not specified")
             return
 
-        self.images['result'].save(file_path)
+        self.images[key].save(file_path)
 
     def update_result_image(self,
                             key: Literal['result', 'blend_result']
                             ):
         # Update self.ui.resultImage_image. Perhaps save it to temporary image?
         # SingleImageEffectApplier#apply_all_effects() returns a pil image.
-        result_image = self.single_image_effect_applier.apply_all_effects()
+        result_image = self.single_image_effect_applier.apply_all_effects() if key == 'result' \
+            else self.double_image_effect_applier.apply_all_effects()
         result_temp_path = save_temp_image(result_image)
 
         try:
             pixmap = QPixmap(result_temp_path)
-            pixmap = pixmap.scaled(self.resultImage_image.size(), aspectMode=Qt.AspectRatioMode.KeepAspectRatio)
-            self.resultImage_image.setPixmap(pixmap)
+            pixmap = pixmap.scaled(self.image_elements[key].size(), aspectMode=Qt.AspectRatioMode.KeepAspectRatio)
+            self.image_elements[key].setPixmap(pixmap)
 
             # If you do NOT need to keep the file around, delete it
             os.remove(result_temp_path)
@@ -186,14 +189,14 @@ class ImageEditor(QMainWindow):
         except Exception as e:
             print("Couldn't set result image.", e)
             self.images[key] = result_image
-            self.resultImage_analyzeButton.setEnabled(False)
-            self.resultImage_saveButton.setEnabled(False)
+            self.save_buttons[key].setEnabled(False)
+            self.analyze_buttons[key].setEnabled(False)
 
         else:
             print("Set result image.")
             self.images[key] = result_image
-            self.resultImage_analyzeButton.setEnabled(True)
-            self.resultImage_saveButton.setEnabled(True)
+            self.save_buttons[key].setEnabled(True)
+            self.analyze_buttons[key].setEnabled(True)
 
 
 if __name__ == '__main__':
