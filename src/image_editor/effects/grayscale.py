@@ -19,6 +19,14 @@ class GrayscaleAlgorithm(Enum):
     ISOLATE_BLUE = 'Isolate Blue'
     GAMMA = 'Gamma Transform'
 
+    @property
+    def index(self) -> int:
+        return list(GrayscaleAlgorithm).index(self)
+
+    @classmethod
+    def for_index(cls, index: int) -> 'GrayscaleAlgorithm':
+        return list(GrayscaleAlgorithm)[index]
+
 
 def grayscale(image: Image, algorithm: GrayscaleAlgorithm = GrayscaleAlgorithm.GAMMA) -> Image:
     img_array = np.array(image)

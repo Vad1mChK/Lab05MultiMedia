@@ -16,6 +16,14 @@ class BlendMode(Enum):
     DIFFERENCE = 'Difference'
     OVERLAY = 'Overlay'
 
+    @property
+    def index(self) -> int:
+        return list(BlendMode).index(self)
+
+    @classmethod
+    def for_index(cls, index: int) -> 'BlendMode':
+        return list(BlendMode)[index]
+
 
 _neutral_colors: dict[BlendMode, tuple] = {
     BlendMode.NORMAL: (255, 255, 255),

@@ -4,7 +4,7 @@ from typing import Dict, Literal
 
 import qdarkstyle
 from PIL.Image import Image
-from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QPushButton, QLabel, QComboBox
+from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QPushButton, QLabel, QComboBox, QGroupBox
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, Qt
 from PySide6.QtGui import QPixmap
@@ -13,7 +13,7 @@ from PIL import Image as ImageModule
 from src.image_editor.effects.blend import BlendMode, BlendImagesEffect
 # Import your image effects and effect appliers.
 from src.image_editor.effects.color_matrix import ColorMatrixEffect, presets as color_matrix_presets
-from src.image_editor.effects.grayscale import GrayscaleImageEffect
+from src.image_editor.effects.grayscale import GrayscaleImageEffect, GrayscaleAlgorithm
 from src.image_editor.effects.transform import TransformImageEffect
 from src.image_editor.image_analyzer import display_color_distribution
 from src.image_editor.image_effect_applier import SingleImageEffectApplier, DoubleImageEffectApplier
@@ -49,19 +49,10 @@ class ImageEditor(QMainWindow):
         }
 
         self.single_image_effects: Dict[ImageEffectType, SingleImageEffect] = {
-            ImageEffectType.TRANSFORM: TransformImageEffect(),
-            ImageEffectType.COLOR_MATRIX: ColorMatrixEffect(),
-            ImageEffectType.GRAYSCALE: GrayscaleImageEffect(),
         }
 
         self.single_image_effect_applier = SingleImageEffectApplier(original=None)
         self.double_image_effect_applier = DoubleImageEffectApplier(left=None, right=None)
-
-        self.blend_mode = BlendMode.NORMAL
-        self.blend_effect = BlendImagesEffect(self.blend_mode)
-        self.double_image_effect_applier += self.blend_effect
-        self.blend_blendMode_select = self.findChild(QComboBox, 'blend_blendMode_select')
-        self.blend_blendMode_select.addItems(map(lambda i: i.name, BlendMode))
 
         self.image_elements: Dict[
             Literal['original', 'result', 'blend_left', 'blend_right', 'blend_result'], QLabel
@@ -94,13 +85,40 @@ class ImageEditor(QMainWindow):
             'blend_right': self.findChild(QPushButton, 'blendRightImage_analyzeButton'),
             'blend_result': self.findChild(QPushButton, 'blendResultImage_analyzeButton'),
         }
-
         for key in ['original', 'blend_left', 'blend_right']:
             self.load_buttons[key].clicked.connect(lambda checked, _key=key: self.on_load_image(_key))
             self.analyze_buttons[key].clicked.connect(lambda checked, _key=key: self.on_analyze_image(_key))
         for key in ['result', 'blend_result']:
             self.save_buttons[key].clicked.connect(lambda checked, _key=key: self.on_save_result_image(_key))
             self.analyze_buttons[key].clicked.connect(lambda checked, _key=key: self.on_analyze_image(_key))
+
+        blend_mode = BlendMode.NORMAL
+        self.blend_effect = BlendImagesEffect(blend_mode)
+        self.double_image_effect_applier += self.blend_effect
+        self.blend_blendMode_select = self.findChild(QComboBox, 'blend_blendMode_select')
+        self.blend_blendMode_select.addItems(map(lambda i: i.value, BlendMode))
+        self.blend_blendMode_select.setCurrentIndex(blend_mode.index)
+        self.blend_blendMode_select.currentIndexChanged.connect(lambda index: self.on_blend_mode_changed(
+            BlendMode.for_index(index)
+        ))
+        self.blend_blendButton = self.findChild(QPushButton, 'blend_blendButton')
+        self.blend_blendButton.clicked.connect(lambda: self.update_result_image('blend_result'))
+
+        grayscale_algorithm = GrayscaleAlgorithm.GAMMA
+        grayscale_effect = GrayscaleImageEffect(grayscale_algorithm)
+        self.single_image_effects[ImageEffectType.GRAYSCALE] = grayscale_effect
+        self.grayscale_algorithmSelect = self.findChild(QComboBox, 'grayscale_algorithmSelect')
+        self.grayscale_algorithmSelect.addItems(map(lambda i: i.value, GrayscaleAlgorithm))
+        self.grayscale_algorithmSelect.setCurrentIndex(grayscale_algorithm.index)
+        self.grayscale_algorithmSelect.currentIndexChanged.connect(lambda index: self.on_grayscale_algorithm_changed(
+            GrayscaleAlgorithm.for_index(index)
+        ))
+        self.grayscale_group = self.findChild(QGroupBox, 'effectGrayscaleGroup')
+        self.grayscale_group.clicked.connect(
+            lambda checked: self.on_toggle_single_effect(ImageEffectType.GRAYSCALE, checked))
+
+        self.applyAllButton = self.findChild(QPushButton, 'applyAllButton')
+        self.applyAllButton.clicked.connect(lambda: self.update_result_image('result'))
 
     def on_load_image(self,
                       key: Literal['original', 'result', 'blend_left', 'blend_right', 'blend_result'],
@@ -151,7 +169,6 @@ class ImageEditor(QMainWindow):
             return
         display_color_distribution(image)
 
-
     def on_save_result_image(self, key: Literal['result', 'blend_result']):
         if self.images[key] is None:
             print("No image to save")
@@ -192,23 +209,40 @@ class ImageEditor(QMainWindow):
             self.images[key] = result_image
             self.save_buttons[key].setEnabled(False)
             self.analyze_buttons[key].setEnabled(False)
+            if key == 'blend_result':
+                self.blend_blendButton.setEnabled(False)
+            else:
+                self.applyAllButton.setEnabled(False)
 
         else:
             print("Set result image.")
             self.images[key] = result_image
             self.save_buttons[key].setEnabled(True)
             self.analyze_buttons[key].setEnabled(True)
+            if key == 'blend_result':
+                self.blend_blendButton.setEnabled(True)
+            else:
+                self.applyAllButton.setEnabled(True)
+
+    def on_blend_mode_changed(self, blend_mode: BlendMode):
+        print(f"Blend mode is now {blend_mode}")
+        self.blend_effect.blend_mode = blend_mode
+
+    def on_grayscale_algorithm_changed(self, algorithm: GrayscaleAlgorithm):
+        print(f"Grayscale algorithm is now {algorithm}")
+        self.single_image_effects[ImageEffectType.GRAYSCALE].algorithm = algorithm
+
+    def on_toggle_single_effect(self, effect_type: ImageEffectType, checked: bool):
+        if checked:
+            print(f"Effect {effect_type.name} enabled.")
+            self.single_image_effect_applier += self.single_image_effects[effect_type]
+        else:
+            print(f"Effect {effect_type.name} disabled.")
+            self.single_image_effect_applier -= self.single_image_effects[effect_type]
+        print(self.single_image_effect_applier.effects)
 
 
 if __name__ == '__main__':
-    # Initialize effect appliers (if needed elsewhere in your code).
-
-    single_image_effects: Dict[ImageEffectType, SingleImageEffect] = {
-        ImageEffectType.TRANSFORM: TransformImageEffect(),
-        ImageEffectType.GRAYSCALE: GrayscaleImageEffect(),
-        ImageEffectType.COLOR_MATRIX: ColorMatrixEffect(color_matrix_presets['Identity']),
-    }
-
     app = QApplication(sys.argv)
     # Apply a dark theme in a couple of lines.
     app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyside6'))
