@@ -162,6 +162,7 @@ class VideoDownloader(QMainWindow):
                 return
 
             new_filename = os.path.splitext(filename)[0] + ".mp3"
+
             audio = AudioSegment.from_file(filename, format="m4a")
             audio.export(new_filename, format="mp3", bitrate="192k")
 
