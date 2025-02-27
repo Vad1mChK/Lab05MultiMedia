@@ -2,9 +2,11 @@ import os
 import sys
 from typing import Dict, Literal
 
+import numpy as np
 import qdarkstyle
 from PIL.Image import Image
-from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QPushButton, QLabel, QComboBox, QGroupBox
+from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QPushButton, QLabel, QComboBox, QGroupBox, \
+    QRadioButton, QCheckBox, QTableWidget, QDoubleSpinBox
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, Qt
 from PySide6.QtGui import QPixmap
@@ -12,7 +14,7 @@ from PIL import Image as ImageModule
 
 from src.image_editor.effects.blend import BlendMode, BlendImagesEffect
 # Import your image effects and effect appliers.
-from src.image_editor.effects.color_matrix import ColorMatrixEffect, presets as color_matrix_presets
+from src.image_editor.effects.color_matrix import ColorMatrixEffect, ColorMatrixPreset
 from src.image_editor.effects.grayscale import GrayscaleImageEffect, GrayscaleAlgorithm
 from src.image_editor.effects.transform import TransformImageEffect
 from src.image_editor.image_analyzer import display_color_distribution
@@ -92,6 +94,7 @@ class ImageEditor(QMainWindow):
             self.save_buttons[key].clicked.connect(lambda checked, _key=key: self.on_save_result_image(_key))
             self.analyze_buttons[key].clicked.connect(lambda checked, _key=key: self.on_analyze_image(_key))
 
+        # Blend input elements
         blend_mode = BlendMode.NORMAL
         self.blend_effect = BlendImagesEffect(blend_mode)
         self.double_image_effect_applier += self.blend_effect
@@ -104,6 +107,29 @@ class ImageEditor(QMainWindow):
         self.blend_blendButton = self.findChild(QPushButton, 'blend_blendButton')
         self.blend_blendButton.clicked.connect(lambda: self.update_result_image('blend_result'))
 
+        # Transform input elements
+        transform_effect = TransformImageEffect()
+        self.single_image_effects[ImageEffectType.TRANSFORM] = transform_effect
+        for angle in [0, 90, 180, 270]:
+            angle_radio = self.findChild(QRadioButton, f'transform_rotationAngle_{angle}')
+            angle_radio.clicked.connect(
+                lambda checked, _angle=angle: self.on_transform_effect_changed(rotation=_angle)
+            )
+        self.transform_flipVertical_checkbox = self.findChild(QCheckBox, 'transform_flipVertical_checkbox')
+        self.transform_flipVertical_checkbox.clicked.connect(
+            lambda checked: self.on_transform_effect_changed(flip_vertical=checked)
+        )
+        self.transform_flipHorizontal_checkbox = self.findChild(QCheckBox, 'transform_flipHorizontal_checkbox')
+        self.transform_flipHorizontal_checkbox.clicked.connect(
+            lambda checked: self.on_transform_effect_changed(flip_horizontal=checked)
+        )
+
+        self.transform_group = self.findChild(QGroupBox, 'effectTransformGroup')
+        self.transform_group.clicked.connect(
+            lambda checked: self.on_toggle_single_effect(ImageEffectType.TRANSFORM, checked)
+        )
+
+        # Grayscale input elements
         grayscale_algorithm = GrayscaleAlgorithm.GAMMA
         grayscale_effect = GrayscaleImageEffect(grayscale_algorithm)
         self.single_image_effects[ImageEffectType.GRAYSCALE] = grayscale_effect
@@ -115,7 +141,41 @@ class ImageEditor(QMainWindow):
         ))
         self.grayscale_group = self.findChild(QGroupBox, 'effectGrayscaleGroup')
         self.grayscale_group.clicked.connect(
-            lambda checked: self.on_toggle_single_effect(ImageEffectType.GRAYSCALE, checked))
+            lambda checked: self.on_toggle_single_effect(ImageEffectType.GRAYSCALE, checked)
+        )
+
+        color_matrix_preset = ColorMatrixPreset.IDENTITY
+        color_matrix_effect = ColorMatrixEffect(color_matrix_preset.value.matrix)
+        self.single_image_effects[ImageEffectType.COLOR_MATRIX] = color_matrix_effect
+        self.colorMatrix_table = self.findChild(QTableWidget, 'colorMatrix_table')
+        self.color_matrix_spinners = []
+        for i in range(4):
+            self.color_matrix_spinners.append([])
+            for j in range(5):
+                spinner = QDoubleSpinBox(
+                    decimals=2,
+                    minimum=-1,
+                    maximum=1,
+                    singleStep=.01
+                )
+                spinner.valueChanged.connect(
+                    lambda value, _i=i, _j=j: self.on_color_matrix_table_changed(_i, _j, value)
+                )
+                self.color_matrix_spinners[i].append(spinner)
+                self.colorMatrix_table.setCellWidget(i, j, spinner)
+        self.update_color_matrix_table()
+
+        self.color_matrix_preset_select = self.findChild(QComboBox, 'colorMatrix_presetSelect')
+        self.color_matrix_preset_select.addItems(map(lambda i: i.value.name, ColorMatrixPreset))
+        self.color_matrix_preset_select.setCurrentIndex(color_matrix_preset.index)
+        self.color_matrix_preset_select.currentIndexChanged.connect(lambda index: self.on_color_matrix_table_replaced(
+            ColorMatrixPreset.for_index(index).value.matrix()
+        ))
+
+        self.color_matrix_group = self.findChild(QGroupBox, 'effectColorMatrixGroup')
+        self.color_matrix_group.clicked.connect(
+            lambda checked: self.on_toggle_single_effect(ImageEffectType.COLOR_MATRIX, checked)
+        )
 
         self.applyAllButton = self.findChild(QPushButton, 'applyAllButton')
         self.applyAllButton.clicked.connect(lambda: self.update_result_image('result'))
@@ -161,6 +221,7 @@ class ImageEditor(QMainWindow):
                 case 'blend_left' | 'blend_right':
                     if self.images['blend_left'] is not None and self.images['blend_right'] is not None:
                         self.update_result_image(key='blend_result')
+
 
     def on_analyze_image(self, key: Literal['original', 'result', 'blend_left', 'blend_right', 'blend_result']):
         image = self.images[key]
@@ -228,6 +289,20 @@ class ImageEditor(QMainWindow):
         print(f"Blend mode is now {blend_mode}")
         self.blend_effect.blend_mode = blend_mode
 
+    def on_transform_effect_changed(
+            self, rotation: int | None = None,
+            flip_vertical: bool | None = None,
+            flip_horizontal: bool | None = None
+        ):
+        if rotation is not None:
+            self.single_image_effects[ImageEffectType.TRANSFORM].rotation = rotation
+        if flip_vertical is not None:
+            self.single_image_effects[ImageEffectType.TRANSFORM].flip_vertical = flip_vertical
+        if flip_horizontal is not None:
+            self.single_image_effects[ImageEffectType.TRANSFORM].flip_horizontal = flip_horizontal
+
+        print(self.single_image_effects[ImageEffectType.TRANSFORM])
+
     def on_grayscale_algorithm_changed(self, algorithm: GrayscaleAlgorithm):
         print(f"Grayscale algorithm is now {algorithm}")
         self.single_image_effects[ImageEffectType.GRAYSCALE].algorithm = algorithm
@@ -240,6 +315,26 @@ class ImageEditor(QMainWindow):
             print(f"Effect {effect_type.name} disabled.")
             self.single_image_effect_applier -= self.single_image_effects[effect_type]
         print(self.single_image_effect_applier.effects)
+
+    def on_table_clicked(self):
+        print(self.colorMatrix_table.children())
+
+    def update_color_matrix_table(self):
+        for i in range(4):
+            for j in range(5):
+                self.color_matrix_spinners[i][j].setValue(
+                    self.single_image_effects[ImageEffectType.COLOR_MATRIX].matrix[i, j]
+                )
+
+    def on_color_matrix_table_changed(self, i, j, new_value):
+        print(f'Matrix [{i}, {j}] is now {new_value}')
+        self.single_image_effects[ImageEffectType.COLOR_MATRIX].matrix[i, j] = new_value
+        print(self.single_image_effects[ImageEffectType.COLOR_MATRIX].matrix)
+        pass
+
+    def on_color_matrix_table_replaced(self, new_value):
+        self.single_image_effects[ImageEffectType.COLOR_MATRIX].matrix = np.array(new_value)
+        self.update_color_matrix_table()
 
 
 if __name__ == '__main__':

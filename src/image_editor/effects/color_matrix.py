@@ -1,9 +1,11 @@
+from enum import Enum
+
 import numpy as np
 from PIL import Image
 from typing import Dict, List, Callable
+from collections import namedtuple
 
 from src.image_editor.image_effects import SingleImageEffect, ImageEffectType, ImageEffectError
-
 
 class ColorMatrixEffect(SingleImageEffect):
     """
@@ -67,69 +69,107 @@ class ColorMatrixEffect(SingleImageEffect):
 # Some PRESETS
 #
 
-presets: dict[str, Callable[[], List[List[float]]]] = {
-    'Identity': lambda: [
-        [1, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0],
-        [0, 0, 1, 0, 0],
-        [0, 0, 0, 1, 0],
-    ],
-    'Grayscale': lambda: [
-        [0.299, 0.587, 0.114, 0, 0],
-        [0.299, 0.587, 0.114, 0, 0],
-        [0.299, 0.587, 0.114, 0, 0],
-        [0,     0,     0,     1, 0],
-    ],
-    'Sepia': lambda: [
-        [0.390, 0.769, 0.189, 0, 0],
-        [0.349, 0.686, 0.168, 0, 0],
-        [0.272, 0.534, 0.131, 0, 0],
-        [0,     0,     0,     1, 0],
-    ],
-    'Green Sepia': lambda: [
-        [0.272, 0.534, 0.131, 0, 0],
-        [0.390, 0.769, 0.189, 0, 0],
-        [0.349, 0.686, 0.168, 0, 0],
-        [0,     0,     0,     1, 0],
-    ],
-    'RGB to BGR': lambda: [
-        [0, 0, 1, 0, 0],
-        [0, 1, 0, 0, 0],
-        [1, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0],
-    ],
-    'Invert': lambda: [
-        [-1, 0,  0,  0, 1],
-        [0,  -1, 0,  0, 1],
-        [0,  0,  -1, 0, 1],
-        [0,  0,  0,  1, 0],
-    ],
-    'Silhouette': lambda: [
-        [0, 0, 0, 1, 0],
-        [0, 0, 0, 1, 0],
-        [0, 0, 0, 1, 0],
-        [0, 0, 0, 0, 1],
-    ],
-    'Isolate Red': lambda: [
-        [1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0],
-    ],
-    'Isolate Green': lambda: [
-        [0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0],
-    ],
-    'Isolate Blue': lambda: [
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0],
-        [0, 0, 0, 1, 0],
-    ]
-}
+ColorMatrixPresetPair = namedtuple("ColorMatrixPresetPair", ["name", "matrix"])
 
+class ColorMatrixPreset(Enum):
+    IDENTITY = ColorMatrixPresetPair(
+        "Identity",
+        lambda: [
+            [1, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0],
+            [0, 0, 1, 0, 0],
+            [0, 0, 0, 1, 0],
+        ]
+    )
+    GRAYSCALE = ColorMatrixPresetPair(
+        'Grayscale',
+        lambda: [
+            [0.299, 0.587, 0.114, 0, 0],
+            [0.299, 0.587, 0.114, 0, 0],
+            [0.299, 0.587, 0.114, 0, 0],
+            [0,     0,     0,     1, 0],
+        ]
+    )
+    SEPIA = ColorMatrixPresetPair(
+        'Sepia',
+        lambda: [
+            [0.390, 0.769, 0.189, 0, 0],
+            [0.349, 0.686, 0.168, 0, 0],
+            [0.272, 0.534, 0.131, 0, 0],
+            [0,     0,     0,     1, 0],
+        ]
+    )
+    GREEN_SEPIA = ColorMatrixPresetPair(
+        'Green Sepia',
+        lambda: [
+            [0.272, 0.534, 0.131, 0, 0],
+            [0.390, 0.769, 0.189, 0, 0],
+            [0.349, 0.686, 0.168, 0, 0],
+            [0,     0,     0,     1, 0],
+        ]
+    )
+    RGB_TO_BGR = ColorMatrixPresetPair(
+        'RGB to BGR',
+        lambda: [
+            [0, 0, 1, 0, 0],
+            [0, 1, 0, 0, 0],
+            [1, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0],
+        ]
+    )
+    INVERT = ColorMatrixPresetPair(
+        'Invert',
+        lambda: [
+            [-1, 0,  0,  0, 1],
+            [0,  -1, 0,  0, 1],
+            [0,  0,  -1, 0, 1],
+            [0,  0,  0,  1, 0],
+        ]
+    )
+    SILHOUETTE = ColorMatrixPresetPair(
+        'Silhouette',
+        lambda: [
+            [0, 0, 0, 1, 0],
+            [0, 0, 0, 1, 0],
+            [0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 1],
+        ]
+    )
+    ISOLATE_RED = ColorMatrixPresetPair(
+        'Isolate Red',
+        lambda: [
+            [1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0],
+        ]
+    )
+    ISOLATE_GREEN = ColorMatrixPresetPair(
+        'Isolate Green',
+        lambda: [
+            [0, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0],
+        ]
+    )
+    ISOLATE_BLUE = ColorMatrixPresetPair(
+        'Isolate Blue',
+        lambda: [
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 1, 0, 0],
+            [0, 0, 0, 1, 0],
+        ]
+    )
+
+    @property
+    def index(self):
+        return list(ColorMatrixPreset).index(self)
+
+    @classmethod
+    def for_index(cls, index: int) -> "ColorMatrixPreset":
+        return list(ColorMatrixPreset)[index]
 
 #
 # Example usage:
@@ -137,6 +177,6 @@ presets: dict[str, Callable[[], List[List[float]]]] = {
 if __name__ == "__main__":
     # Load an image
     test_img = Image.open("../../../examples/godot.png")
-    for (preset_name, preset_value) in presets.items():
-        test_result = ColorMatrixEffect(preset_value).apply(test_img)
-        test_result.save(f"../../../examples/color_matrix/godot_{preset_name}.png")
+    for preset in ColorMatrixPreset:
+        test_result = ColorMatrixEffect(preset.value.matrix).apply(test_img)
+        test_result.save(f"../../../examples/color_matrix/godot_{preset.value.name}.png")

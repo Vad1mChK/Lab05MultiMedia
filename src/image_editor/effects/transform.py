@@ -55,15 +55,15 @@ class TransformImageEffect(SingleImageEffect):
                  flip_horizontal: bool = False,
                  flip_vertical: bool = False,):
         super().__init__(effect_type=ImageEffectType.TRANSFORM)
-        self._rotation = rotation
-        self._flip_horizontal = flip_horizontal
-        self._flip_vertical = flip_vertical
+        self.rotation = rotation
+        self.flip_horizontal = flip_horizontal
+        self.flip_vertical = flip_vertical
 
     def apply(self, image: Image) -> Image:
-        return transform_image(image, self._rotation, self._flip_horizontal, self._flip_vertical)
+        return transform_image(image, self.rotation, self.flip_horizontal, self.flip_vertical)
 
     def __repr__(self):
-        return f'TransformImageEffect(rotation={self._rotation}, flip_horizontal={self._flip_horizontal}, flip_vertical={self._flip_vertical})'
+        return f'TransformImageEffect(rotation={self.rotation}, flip_horizontal={self.flip_horizontal}, flip_vertical={self.flip_vertical})'
 
 
 if __name__ == "__main__":
