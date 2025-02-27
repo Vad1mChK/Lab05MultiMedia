@@ -48,6 +48,12 @@ class ImageEditor(QMainWindow):
             'blend_result': None,
         }
 
+        self.single_image_effects: Dict[ImageEffectType, SingleImageEffect] = {
+            ImageEffectType.TRANSFORM: TransformImageEffect(),
+            ImageEffectType.COLOR_MATRIX: ColorMatrixEffect(),
+            ImageEffectType.GRAYSCALE: GrayscaleImageEffect(),
+        }
+
         self.single_image_effect_applier = SingleImageEffectApplier(original=None)
         self.double_image_effect_applier = DoubleImageEffectApplier(left=None, right=None)
 
