@@ -10,7 +10,7 @@ from PySide6.QtCore import QFile, Qt
 from PySide6.QtGui import QPixmap
 from PIL import Image as ImageModule
 
-from src.image_editor.effects.blend import BlendMode
+from src.image_editor.effects.blend import BlendMode, BlendImagesEffect
 # Import your image effects and effect appliers.
 from src.image_editor.effects.color_matrix import ColorMatrixEffect, presets as color_matrix_presets
 from src.image_editor.effects.grayscale import GrayscaleImageEffect
@@ -52,6 +52,8 @@ class ImageEditor(QMainWindow):
         self.double_image_effect_applier = DoubleImageEffectApplier(left=None, right=None)
 
         self.blend_mode = BlendMode.NORMAL
+        self.blend_effect = BlendImagesEffect(self.blend_mode)
+        self.double_image_effect_applier += self.blend_effect
         self.blend_blendMode_select = self.findChild(QComboBox, 'blend_blendMode_select')
         self.blend_blendMode_select.addItems(map(lambda i: i.name, BlendMode))
 
@@ -113,7 +115,6 @@ class ImageEditor(QMainWindow):
 
             original_image = ImageModule.open(file_path)
             self.images[key] = original_image
-            print(self.images)
 
             match key:
                 case 'original':

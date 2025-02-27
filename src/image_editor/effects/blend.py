@@ -119,7 +119,7 @@ class BlendImagesEffect(DoubleImageEffect):
         self.blend_mode = blend_mode
 
     def apply(self, left: Image, right: Image) -> Image:
-        return blend(left, right, blend_mode)
+        return blend(left, right, self.blend_mode)
 
 
 if __name__ == '__main__':
