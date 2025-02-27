@@ -154,8 +154,8 @@ class ImageEditor(QMainWindow):
             for j in range(5):
                 spinner = QDoubleSpinBox(
                     decimals=2,
-                    minimum=-1,
-                    maximum=1,
+                    minimum=-2,
+                    maximum=2,
                     singleStep=.01
                 )
                 spinner.valueChanged.connect(
@@ -329,10 +329,11 @@ class ImageEditor(QMainWindow):
     def on_color_matrix_table_changed(self, i, j, new_value):
         print(f'Matrix [{i}, {j}] is now {new_value}')
         self.single_image_effects[ImageEffectType.COLOR_MATRIX].matrix[i, j] = new_value
-        print(self.single_image_effects[ImageEffectType.COLOR_MATRIX].matrix)
+        print(self.single_image_effects[ImageEffectType.COLOR_MATRIX].matrix[i, j])
         pass
 
     def on_color_matrix_table_replaced(self, new_value):
+        print('Setting new color matrix')
         self.single_image_effects[ImageEffectType.COLOR_MATRIX].matrix = np.array(new_value)
         self.update_color_matrix_table()
 
