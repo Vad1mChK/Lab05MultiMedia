@@ -40,11 +40,17 @@
        </widget>
       </item>
       <item>
-       <widget class="QLabel" name="label_7">
+       <widget class="QLabel" name="videoNameLabel">
         <property name="font">
          <font>
+          <italic>false</italic>
           <bold>false</bold>
+          <underline>false</underline>
+          <strikeout>false</strikeout>
          </font>
+        </property>
+        <property name="autoFillBackground">
+         <bool>false</bool>
         </property>
         <property name="text">
          <string>Paste a link below to begin.</string>
@@ -183,7 +189,7 @@
            <item>
             <widget class="QCheckBox" name="downloadPlaylistCheck">
              <property name="text">
-              <string>Download entire playlist (fallback to current video)</string>
+              <string>Download entire playlist (may fail if the video is not part of a playlist)</string>
              </property>
              <property name="checked">
               <bool>true</bool>
