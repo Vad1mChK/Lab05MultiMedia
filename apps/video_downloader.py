@@ -7,10 +7,12 @@ from PySide6.QtWidgets import (
     QCheckBox, QRadioButton, QProgressBar
 )
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QFile, Qt
-import pytubefix
+from PySide6.QtCore import QFile
 from pytubefix import YouTube, Playlist
 from pydub import AudioSegment  # For MP3 conversion
+
+from src.util.string_utils import distill_filename
+
 
 class VideoDownloader(QMainWindow):
     def __init__(self):
@@ -101,11 +103,17 @@ class VideoDownloader(QMainWindow):
         try:
             yt = YouTube(link, on_progress_callback=self.on_progress)
 
+            def on_complete_callback(stream, file_path):
+                print(f'Download complete of {file_path}')
+                if mode == "audio":
+                    self.convert_to_mp3(file_path)
+
+            yt.register_on_complete_callback(on_complete_callback)
+
             if mode == "audio":
                 stream = yt.streams.filter(only_audio=True).first()
                 if stream:
-                    filename = stream.download(output_path=self.save_dir)
-                    self.convert_to_mp3(filename)
+                    stream.download(output_path=self.save_dir)
             else:
                 stream = yt.streams.get_highest_resolution()
                 if stream:
@@ -129,17 +137,24 @@ class VideoDownloader(QMainWindow):
                 return False
 
             playlist_name = playlist.title or "Playlist"
+            playlist_name = distill_filename(playlist_name)
             playlist_dir = os.path.join(self.save_dir, playlist_name)
             os.makedirs(playlist_dir, exist_ok=True)
 
             for i, yt in enumerate(videos, start=1):
                 yt.register_on_progress_callback(self.on_progress)
 
+                def on_complete_callback(stream, file_path):
+                    print(f'Download complete of {file_path}')
+                    if mode == "audio":
+                        self.convert_to_mp3(file_path)
+
+                yt.register_on_complete_callback(on_complete_callback)
+
                 if mode == "audio":
                     stream = yt.streams.filter(only_audio=True).first()
                     if stream:
-                        filename = stream.download(output_path=playlist_dir)
-                        self.convert_to_mp3(filename)
+                        stream.download(output_path=playlist_dir)
                 else:
                     stream = yt.streams.get_highest_resolution()
                     if stream:

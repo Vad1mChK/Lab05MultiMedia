@@ -10,10 +10,10 @@ from src.image_editor.image_effects import SingleImageEffect, ImageEffectType, I
 class ColorMatrixEffect(SingleImageEffect):
     """
     Applies a 4x5 color transformation matrix to an RGBA image. The matrix is interpreted as:
-        | OutR | = | InR | x [ rR rG rB rA ] + | rO |
-        | OutG | = | InR | x [ gR gG gB gA ] + | gO |
-        | OutB | = | InR | x [ bR bG bB bA ] + | bO |
-        | OutA | = | InR | x [ aR aG aB aA ] + | aO |
+        | OutR | = [ rR rG rB rA ] x | InR| + | rO |
+        | OutG |   [ gR gG gB gA ]   | InG|   | gO |
+        | OutB |   [ bR bG bB bA ]   | InB|   | bO |
+        | OutA |   [ aR aG aB aA ]   | InA|   | aO |
 
     where the 5th column (Offset) is in the 0..1 range and gets scaled by 255 at runtime.
     All channels are clipped to 0..255 at the end.

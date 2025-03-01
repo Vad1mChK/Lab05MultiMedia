@@ -232,6 +232,16 @@
         </layout>
        </widget>
       </item>
+      <item>
+       <widget class="QLabel" name="label">
+        <property name="text">
+         <string>When downloading audio, it is advised to have FFmpeg installed or else the M4A -&gt; MP3 conversion will fail.</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignmentFlag::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
      </layout>
     </item>
    </layout>
