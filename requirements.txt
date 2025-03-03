@@ -1,9 +1,9 @@
-numpy
-matplotlib
-pillow
-opencv-python  # Computer vision, Video player?
-PySide6-essentials # GUI
-qdarkstyle # GUI dark style
-pytubefix  # YouTube downloads
-pydub # m4a -> mp3
-static-ffmpeg
+numpy==2.2.3  # Math operations
+matplotlib==3.10.1  # Image analysis display
+pillow==11.1.0  # Image manipulations
+opencv-python==4.11.0.86   # Computer vision, Video player?
+PySide6-essentials==6.8.2.1  # GUI
+qdarkstyle==3.2.3  # GUI dark style
+pytubefix==8.12.2  # YouTube downloads
+pydub==0.25.1  # m4a -> mp3
+static-ffmpeg==2.8  # Audio coversion and play
