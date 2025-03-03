@@ -6,3 +6,4 @@ PySide6-essentials # GUI
 qdarkstyle # GUI dark style
 pytubefix  # YouTube downloads
 pydub # m4a -> mp3
+static-ffmpeg
