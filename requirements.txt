@@ -2,6 +2,6 @@ numpy
 matplotlib
 pillow
 opencv-python  # Computer vision, Video player?
-pyside6 # GUI
+PySide6-essentials # GUI
 qdarkstyle # GUI dark style
 pytubefix  # YouTube downloads
