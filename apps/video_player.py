@@ -5,6 +5,7 @@ import time
 import subprocess
 import tempfile
 import signal
+import static_ffmpeg
 
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtWidgets import (
@@ -274,6 +275,8 @@ class VideoPlayer(QMainWindow):
 
 
 if __name__ == '__main__':
+    static_ffmpeg.add_paths()
+
     app = QApplication(sys.argv)
     app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyside6'))
     player = VideoPlayer()
