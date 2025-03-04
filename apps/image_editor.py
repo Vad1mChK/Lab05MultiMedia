@@ -110,11 +110,6 @@ class ImageEditor(QMainWindow):
         # Transform input elements
         transform_effect = TransformImageEffect()
         self.single_image_effects[ImageEffectType.TRANSFORM] = transform_effect
-        for angle in [0, 90, 180, 270]:
-            angle_radio = self.findChild(QRadioButton, f'transform_rotationAngle_{angle}')
-            angle_radio.clicked.connect(
-                lambda checked, _angle=angle: self.on_transform_effect_changed(rotation=_angle)
-            )
         self.transform_flipVertical_checkbox = self.findChild(QCheckBox, 'transform_flipVertical_checkbox')
         self.transform_flipVertical_checkbox.clicked.connect(
             lambda checked: self.on_transform_effect_changed(flip_vertical=checked)
@@ -128,6 +123,14 @@ class ImageEditor(QMainWindow):
         self.transform_group.clicked.connect(
             lambda checked: self.on_toggle_single_effect(ImageEffectType.TRANSFORM, checked)
         )
+        for angle in [0, 90, 180, 270]:
+            angle_radio = self.findChild(QRadioButton, f'transform_rotationAngle_{angle}')
+            self.transform_group.clicked.connect(
+                lambda checked, _angle_radio=angle_radio: _angle_radio.setEnabled(checked)
+            )
+            angle_radio.clicked.connect(
+                lambda checked, _angle=angle: self.on_transform_effect_changed(rotation=_angle)
+            )
 
         # Grayscale input elements
         grayscale_algorithm = GrayscaleAlgorithm.GAMMA
