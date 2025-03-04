@@ -8,17 +8,39 @@ import signal
 import static_ffmpeg
 
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QLabel, QPushButton, QVBoxLayout,
-    QWidget, QFileDialog, QSlider, QHBoxLayout
-)
-from PySide6.QtCore import QTimer, Qt, QSize, QFile
+from PySide6.QtCore import QTimer, Qt, QSize, QFile, QThread, Signal
 from PySide6.QtGui import QImage, QPixmap
+from PySide6.QtWidgets import (
+    QApplication, QMainWindow, QLabel, QPushButton, QSlider,
+    QWidget, QFileDialog
+)
 
 from pydub import AudioSegment
 import qdarkstyle
 
 from src.util.string_utils import format_time, truncate_start
+
+
+class FFmpegDownloadWorker(QThread):
+    """
+    A background worker thread that downloads/ensures FFmpeg is available
+    via static_ffmpeg, and reports its status via signals.
+    """
+    update_status = Signal(str)
+    finished = Signal()
+
+    def run(self):
+        try:
+            self.update_status.emit("Checking/Downloading FFmpeg...")
+            # static_ffmpeg.add_paths() downloads FFmpeg (if necessary) and
+            # adds it to PATH. You can also use static_ffmpeg.ensure() if you prefer.
+            static_ffmpeg.add_paths()
+            self.update_status.emit("FFmpeg is ready.")
+        except Exception as e:
+            self.update_status.emit(f"Error ensuring FFmpeg: {e}")
+        finally:
+            # Signal that we're done (successful or otherwise).
+            self.finished.emit()
 
 
 class VideoPlayer(QMainWindow):
@@ -40,27 +62,23 @@ class VideoPlayer(QMainWindow):
         self.setGeometry(loaded_window.rect())
 
         # Video display
-        self.video_label = self.findChild(QLabel, 'videoLabel')
-
-        self.name_label = self.findChild(QLabel, 'nameLabel')
-
-        self.time_label = self.findChild(QLabel, 'timeLabel')
+        self.video_label: QLabel = self.findChild(QLabel, 'videoLabel')
+        self.name_label: QLabel = self.findChild(QLabel, 'nameLabel')
+        self.time_label: QLabel = self.findChild(QLabel, 'timeLabel')
+        self.status_label: QLabel = self.findChild(QLabel, 'statusLabel')  # New label for status messages
 
         # Control buttons
-        self.load_button = self.findChild(QPushButton, 'loadButton')
+        self.load_button: QPushButton = self.findChild(QPushButton, 'loadButton')
         self.load_button.clicked.connect(self.load_video)
-
-        self.play_button = self.findChild(QPushButton, 'playButton')
+        self.play_button: QPushButton = self.findChild(QPushButton, 'playButton')
         self.play_button.clicked.connect(self.play_video)
-
-        self.pause_button = self.findChild(QPushButton, 'pauseButton')
+        self.pause_button: QPushButton = self.findChild(QPushButton, 'pauseButton')
         self.pause_button.clicked.connect(self.pause_video)
-
-        self.stop_button = self.findChild(QPushButton, 'stopButton')
+        self.stop_button: QPushButton = self.findChild(QPushButton, 'stopButton')
         self.stop_button.clicked.connect(self.stop_video)
 
         # Seek slider (in milliseconds)
-        self.seek_slider = self.findChild(QSlider, 'seekSlider')
+        self.seek_slider: QSlider = self.findChild(QSlider, 'seekSlider')
         self.seek_slider.sliderReleased.connect(self.seek_video)
 
         # Playback state and video properties.
@@ -79,6 +97,40 @@ class VideoPlayer(QMainWindow):
         self.audio = None  # pydub AudioSegment
         self.audio_temp_file = None  # path to exported audio file
         self.audio_process = None  # subprocess.Popen for ffplay
+
+        # Start the thread that ensures FFmpeg is available.
+        self.ffmpeg_thread = FFmpegDownloadWorker()
+        self.ffmpeg_thread.update_status.connect(self.on_status_update)
+        self.ffmpeg_thread.finished.connect(self.on_ffmpeg_ready)
+        self.ffmpeg_thread.start()
+
+        # Initially disable playback controls until FFmpeg is ready.
+        self.enable_playback_controls(False)
+
+    def on_status_update(self, message: str):
+        """
+        Slot to update the status label whenever the FFmpegDownloadWorker sends a status.
+        """
+        self.status_label.setText(message)
+        print(f"[FFmpeg Worker] {message}")
+
+    def on_ffmpeg_ready(self):
+        """
+        Slot called when the FFmpegDownloadWorker has finished ensuring FFmpeg is available.
+        """
+        # Re-enable load button (or other UI) if necessary.
+        self.enable_playback_controls(True)
+
+    def enable_playback_controls(self, enabled: bool):
+        """
+        Enable or disable all playback-related controls.
+        Called initially to disable them until FFmpeg is ready.
+        """
+        self.load_button.setEnabled(enabled)
+        self.play_button.setEnabled(enabled)
+        self.pause_button.setEnabled(enabled)
+        self.stop_button.setEnabled(enabled)
+        self.seek_slider.setEnabled(enabled)
 
     def load_video(self) -> None:
         self.stop_video()
@@ -183,18 +235,13 @@ class VideoPlayer(QMainWindow):
         delay = max(0, int((target_time - current_time) * 1000))
         QTimer.singleShot(delay, self.update_frame)
 
-
     def update_name_label(self, name: str):
-        self.name_label.setProperty(
-            'text',
-            f'{truncate_start(name, limit=48)}'
-        )
-
+        # Optionally truncate or style the name
+        self.name_label.setText(truncate_start(name, limit=48))
 
     def update_time_label(self):
-        self.time_label.setProperty(
-            'text',
-                f'{format_time(int(self.offset))}/{format_time(int(self.video_duration))}'
+        self.time_label.setText(
+            f'{format_time(int(self.offset))}/{format_time(int(self.video_duration))}'
         )
 
     def pause_video(self) -> None:
@@ -275,10 +322,11 @@ class VideoPlayer(QMainWindow):
 
 
 if __name__ == '__main__':
-    static_ffmpeg.add_paths()
-
     app = QApplication(sys.argv)
+    # Apply dark theme
     app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyside6'))
+
+    # Instantiate and show the player
     player = VideoPlayer()
     player.show()
     sys.exit(app.exec())
