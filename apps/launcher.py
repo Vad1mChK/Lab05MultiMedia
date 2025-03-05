@@ -13,7 +13,9 @@ class Launcher(QMainWindow):
 
         # Use QUiLoader to load the UI file.
         loader = QUiLoader()
-        ui_file = QFile("launcher.ui")
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        ui_file_path = os.path.join(script_dir, "launcher.ui")
+        ui_file = QFile(ui_file_path)
         if not ui_file.open(QFile.ReadOnly):
             print("Unable to open launcher.ui")
             sys.exit(-1)
