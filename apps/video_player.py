@@ -49,7 +49,9 @@ class VideoPlayer(QMainWindow):
 
         # Load the .ui file with QUiLoader
         loader = QUiLoader()
-        ui_file = QFile("video_player.ui")  # Ensure this file exists
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        ui_file_path = os.path.join(script_dir, "video_player.ui")
+        ui_file = QFile(ui_file_path)  # Ensure this file exists
         if not ui_file.open(QFile.ReadOnly):
             print("Unable to open video_player.ui")
             sys.exit(-1)

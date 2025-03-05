@@ -34,6 +34,10 @@ class Launcher(QMainWindow):
         self.btnVideoDownloader = self.findChild(QPushButton, "btnVideoDownloader")
         self.btnVideoPlayer = self.findChild(QPushButton, "btnVideoPlayer")
 
+        self.project_root = (os.environ.copy().get("LAB_05_MULTIMEDIA_ROOT") or
+                             os.path.dirname(os.path.abspath(__file__)))
+        print(f'project_root: {self.project_root}')
+
         # Connect signals to slots.
         if self.btnImageEditor:
             self.btnImageEditor.clicked.connect(self.launch_image_editor)
@@ -44,15 +48,15 @@ class Launcher(QMainWindow):
 
     def launch_image_editor(self):
         # Launch the image editor as a separate process.
-        subprocess.Popen([sys.executable, "image_editor.py"])
+        subprocess.Popen([sys.executable, "-m", "apps.image_editor"], cwd=self.project_root)
 
     def launch_video_downloader(self):
         # Launch the video downloader as a separate process.
-        subprocess.Popen([sys.executable, "video_downloader.py"])
+        subprocess.Popen([sys.executable, "-m", "apps.video_downloader"], cwd=self.project_root)
 
     def launch_video_player(self):
         # Launch the video player as a separate process.
-        subprocess.Popen([sys.executable, "video_player.py"])
+        subprocess.Popen([sys.executable, "-m", "apps.video_player"], cwd=self.project_root)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

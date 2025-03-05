@@ -148,7 +148,9 @@ class VideoDownloader(QMainWindow):
     def __init__(self):
         super().__init__()
         loader = QUiLoader()
-        ui_file = QFile("video_downloader.ui")  # Ensure this file exists
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        ui_file_path = os.path.join(script_dir, "video_downloader.ui")
+        ui_file = QFile(ui_file_path)  # Ensure this file exists
         if not ui_file.open(QFile.ReadOnly):
             print("Unable to open video_downloader.ui")
             sys.exit(-1)
