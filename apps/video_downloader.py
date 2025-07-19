@@ -3,7 +3,7 @@ import sys
 import qdarkstyle
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QFileDialog, QPushButton, QLabel, QLineEdit,
-    QCheckBox, QRadioButton, QProgressBar
+    QCheckBox, QRadioButton, QProgressBar, QSizePolicy
 )
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, QThread, Signal
@@ -23,6 +23,7 @@ class DownloadWorker(QThread):
     success = Signal()
     error = Signal(str)
     video_name_change = Signal(str)
+    video_author_change = Signal(str)
 
     def __init__(self, link: str, save_dir: str, is_playlist: bool, mode: str):
         super().__init__()
@@ -75,6 +76,7 @@ class DownloadWorker(QThread):
         yt.register_on_progress_callback(self.on_progress)
 
         self.video_name_change.emit(yt.title)
+        self.video_author_change.emit(yt.author)
 
         if mode == "audio":
             stream = yt.streams.filter(only_audio=True).first()
@@ -170,7 +172,9 @@ class VideoDownloader(QMainWindow):
         self.radio_audio: QRadioButton = self.findChild(QRadioButton, "radioAudio")
         self.download_button: QPushButton = self.findChild(QPushButton, "downloadButton")
         self.download_progress: QProgressBar = self.findChild(QProgressBar, "downloadProgressBar")
+
         self.video_name_label: QLabel = self.findChild(QLabel, "videoNameLabel")
+        self.video_author_label: QLabel = self.findChild(QLabel, "videoAuthorLabel")
 
         self.downloading = False
 
@@ -221,13 +225,23 @@ class VideoDownloader(QMainWindow):
         font.setItalic(is_error)
         self.video_name_label.setFont(font)
 
+    def update_video_author_label(self, text: str = "", is_visible: bool = True):
+        self.video_author_label.setText(text)
+        self.video_author_label.setVisible(is_visible)
+        self.video_author_label.setSizePolicy(
+            QSizePolicy.Policy.Preferred,
+            (QSizePolicy.Policy.Preferred if is_visible else QSizePolicy.Policy.Ignored)
+        )
+
     def on_download_success(self):
         print("Download succeeded.")
         self.update_video_name_label('Download completed.')
+        self.update_video_author_label(is_visible=False)
 
     def on_download_error(self, err):
         print("Download error:", err)
         self.update_video_name_label(f'Download error: {err}', is_error=True)
+        self.update_video_author_label(is_visible=False)
 
     def on_download_finished(self):
         print("Download finished")
@@ -263,6 +277,9 @@ class VideoDownloader(QMainWindow):
         self.worker.finished.connect(self.on_download_finished)
         self.worker.video_name_change.connect(
             lambda video_name: self.update_video_name_label(video_name, is_video_name=True))
+        self.worker.video_author_change.connect(
+            lambda video_author: self.update_video_author_label(video_author)
+        )
         self.worker.start()
 
 
