@@ -61,6 +61,25 @@
        </widget>
       </item>
       <item>
+       <widget class="QLabel" name="videoAuthorLabel">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Ignored">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="text">
+         <string>The video author name will appear here.</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignmentFlag::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
        <layout class="QHBoxLayout" name="horizontalLayout">
         <property name="sizeConstraint">
          <enum>QLayout::SizeConstraint::SetNoConstraint</enum>
@@ -234,6 +253,20 @@
             </widget>
            </item>
           </layout>
+         </item>
+         <item row="7" column="0">
+          <widget class="QLabel" name="label_6">
+           <property name="text">
+            <string>Title and author metadata:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="7" column="1">
+          <widget class="QCheckBox" name="overwriteMetadataCheck">
+           <property name="text">
+            <string>Overwrite metadata</string>
+           </property>
+          </widget>
          </item>
         </layout>
        </widget>
