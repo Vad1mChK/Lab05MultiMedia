@@ -11,6 +11,7 @@ from pytubefix import YouTube, Playlist
 from pydub import AudioSegment  # For MP3 conversion
 
 from src.util.string_utils import distill_filename
+from src.util.metadata_utils import tag_mp4_file, tag_mp3_file
 
 
 class CancelledException(Exception):
@@ -25,13 +26,14 @@ class DownloadWorker(QThread):
     video_name_change = Signal(str)
     video_author_change = Signal(str)
 
-    def __init__(self, link: str, save_dir: str, is_playlist: bool, mode: str):
+    def __init__(self, link: str, save_dir: str, is_playlist: bool, mode: str, overwrite_metadata: bool = False):
         super().__init__()
         self.link = link
         self.save_dir = save_dir
         self.is_playlist = is_playlist
         self.mode = mode
         self.is_cancelled = False
+        self.overwrite_metadata = overwrite_metadata
 
     def run(self):
         try:
@@ -62,35 +64,39 @@ class DownloadWorker(QThread):
 
     def cancel(self):
         self.error.emit('Download cancelled by user.')
-        self.terminate() # This approach is highly discouraged as it stops immediately without cleanup
+        self.terminate()  # This approach is highly discouraged as it stops immediately without cleanup
 
     def download_single(self, link: str, mode: str):
         yt = YouTube(link, on_progress_callback=self.on_progress)
 
-        def on_complete_callback(stream, file_path):
-            print(f"Download complete of {file_path}")
-            if mode == "audio":
-                self.convert_to_mp3(file_path)
-
-        yt.register_on_complete_callback(on_complete_callback)
-        yt.register_on_progress_callback(self.on_progress)
-
-        self.video_name_change.emit(yt.title)
-        self.video_author_change.emit(yt.author)
-
+        # --- 1 · download ---------------------------------------------------------
         if mode == "audio":
             stream = yt.streams.filter(only_audio=True).first()
-            if not stream:
-                raise ValueError("Audio stream not available.")
-            stream.download(output_path=self.save_dir)
         else:
             stream = yt.streams.get_highest_resolution()
-            if not stream:
-                raise ValueError("Video stream not available.")
-            stream.download(output_path=self.save_dir)
 
+        if not stream:
+            raise ValueError(f"{mode.capitalize()} stream not available.")
+
+        file_path = stream.download(output_path=self.save_dir)  # <── returns AFTER writer closes
         self.progress_update.emit(100)
-        print("Single video download complete.")
+
+        # --- 2 · post-processing --------------------------------------------------
+        if mode == "audio":
+            mp3_file = self.convert_to_mp3(file_path)  # ffmpeg runs, exits → handle freed
+            if mp3_file and self.overwrite_metadata:
+                tag_mp3_file(mp3_file, title=yt.title, author=yt.author)
+            # Safe to delete now – no handle left open
+            try:
+                os.remove(file_path)
+            except PermissionError:
+                print(f"Cannot delete the source because ffmpeg still holds it: {file_path}")
+        else:
+            if self.overwrite_metadata:
+                tag_mp4_file(file_path,
+                             title=yt.title,
+                             author=yt.author,
+                             date=yt.publish_date)
 
     def download_playlist(self, link: str, mode: str) -> bool:
         playlist = Playlist(link)
@@ -108,23 +114,32 @@ class DownloadWorker(QThread):
         for i, yt in enumerate(videos, start=1):
             yt.register_on_progress_callback(self.on_progress)
 
-            def on_complete_callback(stream, file_path):
-                print(f"Download complete of {file_path}")
-                if mode == "audio":
-                    self.convert_to_mp3(file_path)
-
-            yt.register_on_complete_callback(on_complete_callback)
-
             self.video_name_change.emit(yt.title)
+            self.video_author_change.emit(yt.author)
 
             if mode == "audio":
                 stream = yt.streams.filter(only_audio=True).first()
-                if stream:
-                    stream.download(output_path=playlist_dir)
             else:
                 stream = yt.streams.get_highest_resolution()
-                if stream:
-                    stream.download(output_path=playlist_dir)
+
+            if not stream:
+                print(f"Stream {i} not available for {yt.watch_url}.")
+                continue
+
+            file_path = stream.download(output_path=playlist_dir)
+
+            if mode == "audio":
+                mp3_file = self.convert_to_mp3(file_path)
+                if mp3_file:
+                    if self.overwrite_metadata:
+                        tag_mp3_file(mp3_file, title=yt.title, author=yt.author)
+                    try:
+                        os.remove(file_path)
+                    except PermissionError:
+                        print(f"Cannot delete the source because ffmpeg still holds it: {file_path}.")
+            else:
+                if self.overwrite_metadata:
+                    tag_mp4_file(file_path, title=yt.title, author=yt.author, date=yt.publish_date)
 
             progress = int(i / total_videos * 100)
             self.progress_update.emit(progress)
@@ -132,7 +147,7 @@ class DownloadWorker(QThread):
         print("Playlist download complete.")
         return True
 
-    def convert_to_mp3(self, filename: str):
+    def convert_to_mp3(self, filename: str) -> str:
         try:
             if not filename.lower().endswith(".m4a"):
                 print(f"Skipping conversion for {filename} (not an M4A).")
@@ -140,10 +155,11 @@ class DownloadWorker(QThread):
             new_filename = os.path.splitext(filename)[0] + ".mp3"
             audio = AudioSegment.from_file(filename, format="m4a")
             audio.export(new_filename, format="mp3", bitrate="192k")
-            print(f"Converted {filename} to {new_filename}")
-            os.remove(filename)
+            print(f"Converted {filename} -> {new_filename}")
+            return new_filename
         except Exception as e:
             print(f"Error converting {filename} to MP3: {e}")
+            return None
 
 
 class VideoDownloader(QMainWindow):
@@ -175,6 +191,7 @@ class VideoDownloader(QMainWindow):
 
         self.video_name_label: QLabel = self.findChild(QLabel, "videoNameLabel")
         self.video_author_label: QLabel = self.findChild(QLabel, "videoAuthorLabel")
+        self.overwrite_metadata_check: QCheckBox = self.findChild(QCheckBox, "overwriteMetadataCheck")
 
         self.downloading = False
 
@@ -268,9 +285,13 @@ class VideoDownloader(QMainWindow):
         self.download_progress.setValue(0)
         is_playlist = self.download_playlist_check.isChecked()
         mode = "audio" if self.radio_audio.isChecked() else "video"
+        do_overwrite_metadata = self.overwrite_metadata_check.isChecked()
 
         # Create and start the worker thread.
-        self.worker = DownloadWorker(link, self.save_dir, is_playlist, mode)
+        self.worker = DownloadWorker(
+            link, self.save_dir, is_playlist, mode,
+            overwrite_metadata=do_overwrite_metadata
+        )
         self.worker.progress_update.connect(self.download_progress.setValue)
         self.worker.error.connect(self.on_download_error)
         self.worker.success.connect(self.on_download_success)
