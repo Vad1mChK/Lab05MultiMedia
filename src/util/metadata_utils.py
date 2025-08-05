@@ -1,4 +1,4 @@
-from mutagen.mp4 import MP4, MP4Tags
+from mutagen.mp4 import MP4
 from datetime import datetime
 from mutagen.easyid3 import EasyID3
 from mutagen.id3 import ID3, TIT2, TPE1, ID3NoHeaderError
