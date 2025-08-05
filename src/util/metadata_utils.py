@@ -6,15 +6,12 @@ from mutagen.id3 import ID3, TIT2, TPE1, ID3NoHeaderError
 
 def tag_mp4_file(file: str, *, title: str = None, author: str = None, date: datetime = None):
     video = MP4(file)
-    tags = video.tags() or MP4Tags
     if title:
-        tags['\xa9nam'] = title
+        video.tags['\xa9nam'] = title
     if author:
-        tags['\xa9ART'] = author
+        video.tags['\xa9ART'] = author
     if date:
-        tags['\xa9day'] = str(date.year)
-
-    video.tags(tags)
+        video.tags['\xa9day'] = [date.strftime("%Y-%m-%d")]
     video.save()
 
 def tag_mp3_file(path: str, *, title: str | None = None, author: str | None = None, do_comment: bool = True) -> None:
@@ -37,6 +34,6 @@ def tag_mp3_file(path: str, *, title: str | None = None, author: str | None = No
     audio.save(v2_version=3)                        # writes tags back to file
 
 if __name__ == '__main__':
-    file = "D:/Videos/Forever Halloween.mp3"
-    tag_mp3_file(file, title="Forever Halloween", author="The Megas")
-    # tag_mp4_file(file, title="skebob", author="redacted")
+    file = "D:/Videos/Title - Sonic Pocket Adventure [OST].mp4"
+    # tag_mp3_file(file, title="Forever Halloween", author="The Megas")
+    tag_mp4_file(file, title="skebob", author="redacted")
