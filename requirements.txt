@@ -7,3 +7,4 @@ qdarkstyle==3.2.3  # GUI dark style
 pytubefix==9.4.1  # YouTube downloads
 pydub==0.25.1  # m4a -> mp3
 static-ffmpeg==2.8  # Audio coversion and play
+mutagen==1.47.0 # Metadata editing
